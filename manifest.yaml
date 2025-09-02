@@ -3,9 +3,9 @@ type: plugin
 author: liangmj
 name: image_press
 label:
+  zh_Hans: "图片压缩器"
   en_US: "Image Press"
   ja_JP: "画像圧縮"
-  zh_Hans: "图片压缩器"
   pt_BR: "Compressor de Imagem"
 description:
   en_US: "A powerful image compression tool that can compress images to specified sizes while maintaining optimal quality"

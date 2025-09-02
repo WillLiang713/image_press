@@ -2,8 +2,8 @@ identity:
   name: "image_press"
   author: "liangmj"
   label:
-    en_US: "Image Press"
     zh_Hans: "图片压缩器"
+    en_US: "Image Press"
     pt_BR: "Compressor de Imagem"
 description:
   human:
