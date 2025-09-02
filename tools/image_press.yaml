@@ -1,0 +1,91 @@
+identity:
+  name: "image_press"
+  author: "liangmj"
+  label:
+    en_US: "Image Press"
+    zh_Hans: "图片压缩器"
+    pt_BR: "Compressor de Imagem"
+description:
+  human:
+    en_US: "A powerful image compression tool that can compress images to specified sizes while maintaining quality"
+    zh_Hans: "一个强大的图片压缩工具，可以将图片压缩到指定大小并保持质量"
+    pt_BR: "Uma ferramenta poderosa de compressão de imagem que pode comprimir imagens para tamanhos especificados mantendo a qualidade"
+  llm: "A tool for compressing images to specified sizes while maintaining optimal quality. Supports multiple formats including JPEG, PNG, and WebP."
+parameters:
+  - name: "image_file"
+    type: "file"
+    required: false
+    label:
+      en_US: "Image File"
+      zh_Hans: "图片文件"
+      pt_BR: "Arquivo de Imagem"
+    human_description:
+      en_US: "Upload an image file to be compressed"
+      zh_Hans: "上传需要压缩的图片文件"
+      pt_BR: "Faça upload de um arquivo de imagem para ser comprimido"
+    llm_description: "Upload an image file to be compressed"
+    form: "form"
+    file_types: ["image"]
+  
+  - name: "image_url"
+    type: "string"
+    required: false
+    label:
+      en_US: "Image URL"
+      zh_Hans: "图片链接"
+      pt_BR: "URL da Imagem"
+    human_description:
+      en_US: "The URL of the image to be compressed (alternative to file upload)"
+      zh_Hans: "需要压缩的图片链接（文件上传的替代方案）"
+      pt_BR: "A URL da imagem a ser comprimida (alternativa ao upload de arquivo)"
+    llm_description: "The URL of the image to be compressed"
+    form: "llm"
+  
+  - name: "target_size_kb"
+    type: "number"
+    required: false
+    default: 200
+    label:
+      en_US: "Target Size (KB)"
+      zh_Hans: "目标大小 (KB)"
+      pt_BR: "Tamanho Alvo (KB)"
+    human_description:
+      en_US: "Target file size in kilobytes (50-8192 KB)"
+      zh_Hans: "目标文件大小，单位KB (50-8192 KB)"
+      pt_BR: "Tamanho do arquivo alvo em quilobytes (50-8192 KB)"
+    llm_description: "Target file size in kilobytes, range: 50-8192 KB"
+    form: "llm"
+  
+  - name: "quality"
+    type: "number"
+    required: false
+    default: 85
+    label:
+      en_US: "Quality"
+      zh_Hans: "质量"
+      pt_BR: "Qualidade"
+    human_description:
+      en_US: "Initial compression quality (60-95)"
+      zh_Hans: "初始压缩质量 (60-95)"
+      pt_BR: "Qualidade inicial de compressão (60-95)"
+    llm_description: "Initial compression quality, range: 60-95"
+    form: "llm"
+  
+  - name: "format"
+    type: "string"
+    required: false
+    default: "auto"
+    label:
+      en_US: "Output Format"
+      zh_Hans: "输出格式"
+      pt_BR: "Formato de Saída"
+    human_description:
+      en_US: "Output image format: auto, jpeg, png, webp"
+      zh_Hans: "输出图片格式：auto（自动）、jpeg、png、webp"
+      pt_BR: "Formato de imagem de saída: auto, jpeg, png, webp"
+    llm_description: "Output image format. Options: auto (automatic), jpeg, png, webp"
+    form: "llm"
+
+extra:
+  python:
+    source: "tools/image_press.py"
