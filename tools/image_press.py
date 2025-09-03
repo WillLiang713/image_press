@@ -17,7 +17,7 @@ class ImagePressTool(Tool):
     def _invoke(self, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
         try:
             # 获取参数
-            image_file = tool_parameters.get("image_file", None)
+            image_file = tool_parameters.get("image_input", None)
             image_url = tool_parameters.get("image_url", "")
             target_size_kb = tool_parameters.get("target_size_kb", 200)
             quality = tool_parameters.get("quality", 85)
@@ -25,7 +25,7 @@ class ImagePressTool(Tool):
             
             # 检查是否提供了图片文件或URL
             if not image_file and not image_url:
-                yield self.create_text_message("错误：请提供图片文件或图片URL")
+                yield self.create_text_message("错误：请提供图片文件或图片链接")
                 return
             
             # 处理图片文件上传
@@ -197,6 +197,9 @@ class ImagePressTool(Tool):
             elif original_format == "PNG":
                 format_used = "PNG"
                 mime_type = "image/png"
+            elif original_format == "WEBP":
+                format_used = "WEBP"
+                mime_type = "image/webp"
             else:
                 format_used = "JPEG"
                 mime_type = "image/jpeg"
@@ -212,6 +215,8 @@ class ImagePressTool(Tool):
                 current_image.save(img_buffer, format="JPEG", quality=current_quality, optimize=True)
             elif format_used == "PNG":
                 current_image.save(img_buffer, format="PNG", optimize=True)
+            elif format_used == "WEBP":
+                current_image.save(img_buffer, format="WEBP", quality=current_quality, lossless=False)
             else:
                 current_image.save(img_buffer, format=format_used, quality=current_quality, optimize=True)
             
@@ -240,6 +245,8 @@ class ImagePressTool(Tool):
                 current_image.save(img_buffer, format="JPEG", quality=current_quality, optimize=True)
             elif format_used == "PNG":
                 current_image.save(img_buffer, format="PNG", optimize=True)
+            elif format_used == "WEBP":
+                current_image.save(img_buffer, format="WEBP", quality=current_quality, lossless=False)
             else:
                 current_image.save(img_buffer, format=format_used, quality=current_quality, optimize=True)
             
