@@ -159,7 +159,7 @@ class ImagePressTool(Tool):
     
     def _compress_image(self, image: Image.Image, target_size_kb: int, quality: int, 
                        output_format: str, original_format: str) -> tuple[Image.Image, dict]:
-        """压缩图片的核心逻辑"""
+        """压缩图片的核心逻辑 - 优化版本，提高压缩速度"""
         logger.info(f"开始压缩图片，参数类型验证:")
         logger.info(f"  target_size_kb: {type(target_size_kb)} = {target_size_kb}")
         logger.info(f"  quality: {type(quality)} = {quality}")
@@ -167,7 +167,6 @@ class ImagePressTool(Tool):
         logger.info(f"  original_format: {type(original_format)} = {original_format}")
         
         target_size_bytes = target_size_kb * 1024
-        current_quality = quality
         current_image = image.copy()
         
         logger.info(f"计算后的target_size_bytes: {type(target_size_bytes)} = {target_size_bytes}")
@@ -207,8 +206,35 @@ class ImagePressTool(Tool):
             format_used = output_format.upper()
             mime_type = f"image/{output_format.lower()}"
         
-        # 尝试通过调整质量来达到目标大小
-        while current_quality > 60:
+        # 智能预判压缩策略 - 根据目标大小和原始尺寸快速估算
+        estimated_quality = self._estimate_optimal_quality(
+            img_width, img_height, target_size_bytes, format_used, quality
+        )
+        
+        # 智能尺寸预调整 - 如果目标大小很小，直接调整尺寸
+        estimated_size_after_quality = self._estimate_size_after_quality(
+            img_width, img_height, estimated_quality, format_used
+        )
+        
+        was_resized = False
+        if estimated_size_after_quality > target_size_bytes * 1.5:  # 如果质量压缩后仍然远大于目标
+            # 直接计算合适的尺寸，避免多次尝试
+            scale_factor = (target_size_bytes / estimated_size_after_quality) ** 0.5
+            new_width = max(int(img_width * scale_factor), 100)  # 最小尺寸限制
+            new_height = max(int(img_height * scale_factor), 100)
+            
+            logger.info(f"预调整图片尺寸: {img_width}x{img_height} -> {new_width}x{new_height}")
+            current_image = current_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            was_resized = True
+            img_width, img_height = new_width, new_height
+        
+        # 使用预判的质量值进行压缩，最多尝试2-3次
+        current_quality = estimated_quality
+        max_attempts = 3
+        attempt = 0
+        
+        while attempt < max_attempts:
+            attempt += 1
             img_buffer = io.BytesIO()
             
             if format_used == "JPEG":
@@ -225,17 +251,25 @@ class ImagePressTool(Tool):
             if current_size <= target_size_bytes:
                 break
             
-            current_quality -= 5
+            # 智能调整质量 - 根据超出程度调整步长
+            if attempt == 1:
+                # 第一次尝试失败，根据超出程度大幅调整
+                oversize_ratio = current_size / target_size_bytes
+                if oversize_ratio > 2.0:
+                    current_quality = max(60, current_quality - 20)  # 大幅降低质量
+                else:
+                    current_quality = max(60, current_quality - 10)  # 中等降低质量
+            else:
+                # 后续尝试，小幅调整
+                current_quality = max(60, current_quality - 5)
         
-        # 如果质量调整后仍然太大，尝试调整尺寸
-        was_resized = False
-        if current_size > target_size_bytes:
-            # 计算需要缩放的倍数
+        # 如果仍然太大，最后尝试尺寸调整
+        if current_size > target_size_bytes and not was_resized:
             scale_factor = (target_size_bytes / current_size) ** 0.5
-            new_width = int(img_width * scale_factor)
-            new_height = int(img_height * scale_factor)
+            new_width = max(int(img_width * scale_factor), 100)
+            new_height = max(int(img_height * scale_factor), 100)
             
-            logger.info(f"调整图片尺寸: {img_width}x{img_height} -> {new_width}x{new_height}")
+            logger.info(f"最终调整图片尺寸: {img_width}x{img_height} -> {new_width}x{new_height}")
             current_image = current_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
             was_resized = True
             
@@ -263,3 +297,67 @@ class ImagePressTool(Tool):
         }
         
         return current_image, compression_info
+    
+    def _estimate_optimal_quality(self, width: int, height: int, target_size_bytes: int, 
+                                format_used: str, initial_quality: int) -> int:
+        """智能估算最佳质量值，减少循环次数"""
+        # 根据图片尺寸和目标大小快速估算合适的质量值
+        pixels = width * height
+        target_bpp = target_size_bytes * 8 / pixels  # 目标每像素位数
+        
+        if format_used == "JPEG":
+            # JPEG质量估算：根据目标每像素位数调整
+            if target_bpp < 0.5:
+                return max(60, initial_quality - 30)
+            elif target_bpp < 1.0:
+                return max(65, initial_quality - 20)
+            elif target_bpp < 2.0:
+                return max(70, initial_quality - 15)
+            else:
+                return max(75, initial_quality - 10)
+        elif format_used == "WEBP":
+            # WEBP质量估算
+            if target_bpp < 0.5:
+                return max(60, initial_quality - 25)
+            elif target_bpp < 1.0:
+                return max(65, initial_quality - 15)
+            else:
+                return max(70, initial_quality - 10)
+        else:
+            # PNG等无损格式，主要依赖尺寸调整
+            return initial_quality
+    
+    def _estimate_size_after_quality(self, width: int, height: int, quality: int, 
+                                   format_used: str) -> int:
+        """估算调整质量后的大概文件大小"""
+        pixels = width * height
+        
+        if format_used == "JPEG":
+            # JPEG大小估算：质量越高，每像素位数越多
+            if quality >= 90:
+                bpp = 2.5
+            elif quality >= 80:
+                bpp = 2.0
+            elif quality >= 70:
+                bpp = 1.5
+            elif quality >= 60:
+                bpp = 1.0
+            else:
+                bpp = 0.8
+        elif format_used == "WEBP":
+            # WEBP大小估算
+            if quality >= 90:
+                bpp = 2.0
+            elif quality >= 80:
+                bpp = 1.6
+            elif quality >= 70:
+                bpp = 1.2
+            elif quality >= 60:
+                bpp = 0.9
+            else:
+                bpp = 0.7
+        else:
+            # PNG等格式，估算为较大值
+            bpp = 3.0
+        
+        return int(pixels * bpp / 8)  # 转换为字节
