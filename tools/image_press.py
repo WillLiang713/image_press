@@ -19,81 +19,34 @@ class ImagePressTool(Tool):
             # 获取参数
             image_file = tool_parameters.get("image_input", None)
             image_url = tool_parameters.get("image_url", "")
-            target_size_kb = tool_parameters.get("target_size_kb", 200)
-            quality = tool_parameters.get("quality", 85)
-            output_format = tool_parameters.get("format", "auto")
             
             # 检查是否提供了图片文件或URL
             if not image_file and not image_url:
                 yield self.create_text_message("错误：请提供图片文件或图片链接")
                 return
             
-            # 处理图片文件上传
+            # 处理图片文件上传 - 简化版本
             if image_file:
                 logger.info("开始处理上传的图片文件")
-                logger.info(f"image_file类型: {type(image_file)}")
                 
-                # 检查是否为File类型对象
+                # 获取图片数据
                 if isinstance(image_file, File):
-                    logger.info("检测到File类型对象")
-                    # 验证文件类型
                     if image_file.type != "image":
-                        yield self.create_text_message(f"错误：文件类型不是图片，当前类型: {image_file.type}")
+                        yield self.create_text_message(f"错误：文件类型不是图片")
                         return
-                    
-                    # 直接使用blob属性获取图片数据
                     image_data = image_file.blob
-                    logger.info(f"从File.blob获取图片数据，类型: {type(image_data)}, 长度: {len(image_data)}")
-                    
+                elif hasattr(image_file, 'content'):
+                    image_data = image_file.content
+                elif hasattr(image_file, 'read'):
+                    image_data = image_file.read()
                 else:
-                    # 兼容其他类型的处理逻辑
-                    logger.info("检测到非File类型对象，使用兼容处理逻辑")
-                    
-                    if hasattr(image_file, 'content'):
-                        # 如果是文件对象，直接读取内容
-                        logger.info("检测到文件对象，使用content属性")
-                        image_data = image_file.content
-                        logger.info(f"content类型: {type(image_data)}, 长度: {len(image_data) if hasattr(image_data, '__len__') else '未知'}")
-                    elif isinstance(image_file, str):
-                        # 如果是base64字符串，解码
-                        logger.info("检测到字符串，尝试base64解码")
-                        image_data = base64.b64decode(image_file)
-                        logger.info(f"解码后长度: {len(image_data)}")
-                    elif isinstance(image_file, tuple):
-                        # 如果是元组类型，通常是 (filename, file_content, content_type) 格式
-                        logger.info("检测到元组类型文件对象")
-                        if len(image_file) >= 2:
-                            # 第二个元素通常是文件内容
-                            image_data = image_file[1]
-                            logger.info(f"从元组中提取文件内容，类型: {type(image_data)}, 长度: {len(image_data) if hasattr(image_data, '__len__') else '未知'}")
-                        else:
-                            raise ValueError("元组格式不正确，无法提取文件内容")
-                    elif hasattr(image_file, 'read'):
-                        # 如果有read方法，尝试读取
-                        logger.info("检测到有read方法的文件对象")
-                        image_data = image_file.read()
-                        logger.info(f"read后类型: {type(image_data)}, 长度: {len(image_data) if hasattr(image_data, '__len__') else '未知'}")
-                    else:
-                        # 其他情况，尝试转换为字节
-                        logger.info(f"其他类型，尝试转换为字节: {type(image_file)}")
-                        try:
-                            image_data = bytes(image_file)
-                            logger.info(f"转换成功，长度: {len(image_data)}")
-                        except Exception as conversion_error:
-                            logger.error(f"转换失败: {conversion_error}")
-                            raise ValueError(f"无法将 {type(image_file)} 类型的文件对象转换为字节数据")
+                    yield self.create_text_message("错误：无法读取上传的文件")
+                    return
                 
                 # 打开图片
-                logger.info("尝试打开图片")
                 image = Image.open(io.BytesIO(image_data))
-                logger.info(f"图片格式: {image.format}, 模式: {image.mode}")
                 original_size = len(image_data)
                 original_format = image.format or "JPEG"
-                logger.info(f"原始大小: {original_size} 字节, 格式: {original_format}")
-                
-                # 验证图片尺寸
-                logger.info(f"文件图片尺寸验证 - width: {type(image.width)}, height: {type(image.height)}")
-                logger.info(f"文件图片尺寸验证 - size: {type(image.size)}")
                 
             # 处理图片URL
             elif image_url:
@@ -107,14 +60,17 @@ class ImagePressTool(Tool):
                     original_size = len(response.content)
                     original_format = image.format or "JPEG"
                     
-                    # 验证图片尺寸
-                    logger.info(f"URL图片尺寸验证 - width: {type(image.width)}, height: {type(image.height)}")
-                    logger.info(f"URL图片尺寸验证 - size: {type(image.size)}")
-                    
                 except requests.RequestException as e:
                     logger.error(f"下载图片失败: {str(e)}")
                     yield self.create_text_message(f"下载图片失败: {str(e)}")
                     return
+            
+            # 统一压缩到1MB以下
+            target_size_kb = 1024  # 1MB = 1024KB
+            quality = 85  # 固定质量
+            output_format = "auto"  # 自动格式
+            
+            logger.info(f"统一压缩参数: 目标大小={target_size_kb}KB, 质量={quality}")
             
             # 压缩图片
             compressed_image, compression_info = self._compress_image(
@@ -131,7 +87,7 @@ class ImagePressTool(Tool):
             # 返回压缩信息
             info = {
                 "status": "success",
-                "message": "图片压缩成功",
+                "message": "图片压缩成功（已压缩到1MB以下）",
                 "input_type": "file" if image_file else "url",
                 "original_size_kb": round(original_size / 1024, 2),
                 "compressed_size_kb": round(compression_info["size"] / 1024, 2),
@@ -144,12 +100,10 @@ class ImagePressTool(Tool):
                 "mime_type": compression_info["mime_type"]
             }
             
-            # 将压缩后的图片转换为字节数据
-            img_buffer = io.BytesIO()
-            compressed_image.save(img_buffer, format=compression_info["format_used"])
-            compressed_bytes = img_buffer.getvalue()
+            # 直接使用压缩过程中已经生成的图片数据，避免重复保存
+            compressed_bytes = compression_info["image_data"]
             
-            # 返回压缩信息和压缩后的图片数据，参考demo/image.py的返回方式
+            # 返回压缩信息和压缩后的图片数据
             yield self.create_json_message(info)
             yield self.create_blob_message(blob=compressed_bytes, meta={"mime_type": compression_info["mime_type"]})
             
@@ -159,34 +113,12 @@ class ImagePressTool(Tool):
     
     def _compress_image(self, image: Image.Image, target_size_kb: int, quality: int, 
                        output_format: str, original_format: str) -> tuple[Image.Image, dict]:
-        """压缩图片的核心逻辑 - 优化版本，提高压缩速度"""
-        logger.info(f"开始压缩图片，参数类型验证:")
-        logger.info(f"  target_size_kb: {type(target_size_kb)} = {target_size_kb}")
-        logger.info(f"  quality: {type(quality)} = {quality}")
-        logger.info(f"  output_format: {type(output_format)} = {output_format}")
-        logger.info(f"  original_format: {type(original_format)} = {original_format}")
+        """简化的图片压缩逻辑"""
+        logger.info(f"开始压缩图片到 {target_size_kb}KB")
         
         target_size_bytes = target_size_kb * 1024
         current_image = image.copy()
-        
-        logger.info(f"计算后的target_size_bytes: {type(target_size_bytes)} = {target_size_bytes}")
-        
-        # 获取图片尺寸，确保是整数类型
-        try:
-            img_width = int(current_image.width)
-            img_height = int(current_image.height)
-            logger.info(f"图片尺寸: {img_width} x {img_height}")
-        except (ValueError, TypeError) as e:
-            logger.error(f"获取图片尺寸失败: {e}, 类型: {type(current_image.width)}, {type(current_image.height)}")
-            # 尝试使用size属性
-            try:
-                img_width, img_height = current_image.size
-                img_width = int(img_width)
-                img_height = int(img_height)
-                logger.info(f"使用size属性获取图片尺寸: {img_width} x {img_height}")
-            except Exception as e2:
-                logger.error(f"使用size属性获取图片尺寸也失败: {e2}")
-                raise ValueError(f"无法获取图片尺寸: {e2}")
+        width, height = current_image.size
         
         # 确定输出格式
         if output_format == "auto":
@@ -206,158 +138,73 @@ class ImagePressTool(Tool):
             format_used = output_format.upper()
             mime_type = f"image/{output_format.lower()}"
         
-        # 智能预判压缩策略 - 根据目标大小和原始尺寸快速估算
-        estimated_quality = self._estimate_optimal_quality(
-            img_width, img_height, target_size_bytes, format_used, quality
-        )
-        
-        # 智能尺寸预调整 - 如果目标大小很小，直接调整尺寸
-        estimated_size_after_quality = self._estimate_size_after_quality(
-            img_width, img_height, estimated_quality, format_used
-        )
-        
         was_resized = False
-        if estimated_size_after_quality > target_size_bytes * 1.5:  # 如果质量压缩后仍然远大于目标
-            # 直接计算合适的尺寸，避免多次尝试
-            scale_factor = (target_size_bytes / estimated_size_after_quality) ** 0.5
-            new_width = max(int(img_width * scale_factor), 100)  # 最小尺寸限制
-            new_height = max(int(img_height * scale_factor), 100)
-            
-            logger.info(f"预调整图片尺寸: {img_width}x{img_height} -> {new_width}x{new_height}")
-            current_image = current_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # 如果是大图片，先缩小尺寸
+        if width * height > 3000000:  # 大于3MP直接缩小
+            scale = 0.7
+            new_width = int(width * scale)
+            new_height = int(height * scale)
+            current_image = current_image.resize((new_width, new_height), Image.Resampling.BILINEAR)
+            width, height = new_width, new_height
             was_resized = True
-            img_width, img_height = new_width, new_height
+            logger.info(f"大图片预缩放到: {width}x{height}")
         
-        # 使用预判的质量值进行压缩，最多尝试2-3次
-        current_quality = estimated_quality
-        max_attempts = 3
-        attempt = 0
-        
-        while attempt < max_attempts:
-            attempt += 1
+        # 简单的质量调整循环
+        for attempt_quality in [quality, 75, 65, 60]:
             img_buffer = io.BytesIO()
             
-            if format_used == "JPEG":
-                current_image.save(img_buffer, format="JPEG", quality=current_quality, optimize=True)
-            elif format_used == "PNG":
+            if format_used == "PNG":
                 current_image.save(img_buffer, format="PNG", optimize=True)
+            elif format_used == "JPEG":
+                current_image.save(img_buffer, format="JPEG", quality=attempt_quality, optimize=True)
             elif format_used == "WEBP":
-                current_image.save(img_buffer, format="WEBP", quality=current_quality, lossless=False)
+                current_image.save(img_buffer, format="WEBP", quality=attempt_quality, lossless=False)
             else:
-                current_image.save(img_buffer, format=format_used, quality=current_quality, optimize=True)
+                current_image.save(img_buffer, format=format_used, quality=attempt_quality, optimize=True)
             
-            current_size = len(img_buffer.getvalue())
+            image_data = img_buffer.getvalue()
+            current_size = len(image_data)
             
+            # 如果大小满足要求，直接返回
             if current_size <= target_size_bytes:
+                logger.info(f"压缩成功: {current_size} bytes, 质量: {attempt_quality}")
                 break
-            
-            # 智能调整质量 - 根据超出程度调整步长
-            if attempt == 1:
-                # 第一次尝试失败，根据超出程度大幅调整
-                oversize_ratio = current_size / target_size_bytes
-                if oversize_ratio > 2.0:
-                    current_quality = max(60, current_quality - 20)  # 大幅降低质量
-                else:
-                    current_quality = max(60, current_quality - 10)  # 中等降低质量
-            else:
-                # 后续尝试，小幅调整
-                current_quality = max(60, current_quality - 5)
         
-        # 如果仍然太大，最后尝试尺寸调整
-        if current_size > target_size_bytes and not was_resized:
-            scale_factor = (target_size_bytes / current_size) ** 0.5
-            new_width = max(int(img_width * scale_factor), 100)
-            new_height = max(int(img_height * scale_factor), 100)
+        # 如果还是太大，最后尝试缩小尺寸
+        if current_size > target_size_bytes:
+            scale = 0.8
+            new_width = max(int(width * scale), 200)  # 最小宽度200
+            new_height = max(int(height * scale), 200)  # 最小高度200
             
-            logger.info(f"最终调整图片尺寸: {img_width}x{img_height} -> {new_width}x{new_height}")
-            current_image = current_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            current_image = current_image.resize((new_width, new_height), Image.Resampling.BILINEAR)
+            width, height = new_width, new_height
             was_resized = True
             
-            # 重新保存并检查大小
+            # 重新保存
             img_buffer = io.BytesIO()
-            if format_used == "JPEG":
-                current_image.save(img_buffer, format="JPEG", quality=current_quality, optimize=True)
-            elif format_used == "PNG":
+            if format_used == "PNG":
                 current_image.save(img_buffer, format="PNG", optimize=True)
+            elif format_used == "JPEG":
+                current_image.save(img_buffer, format="JPEG", quality=60, optimize=True)
             elif format_used == "WEBP":
-                current_image.save(img_buffer, format="WEBP", quality=current_quality, lossless=False)
+                current_image.save(img_buffer, format="WEBP", quality=60, lossless=False)
             else:
-                current_image.save(img_buffer, format=format_used, quality=current_quality, optimize=True)
+                current_image.save(img_buffer, format=format_used, quality=60, optimize=True)
             
-            current_size = len(img_buffer.getvalue())
+            image_data = img_buffer.getvalue()
+            attempt_quality = 60
+            logger.info(f"最终缩放到: {width}x{height}")
         
         compression_info = {
-            "size": current_size,
+            "size": len(image_data),
             "format_used": format_used,
-            "width": img_width,
-            "height": img_height,
-            "quality_used": current_quality,
+            "width": width,
+            "height": height,
+            "quality_used": attempt_quality,
             "was_resized": was_resized,
-            "mime_type": mime_type
+            "mime_type": mime_type,
+            "image_data": image_data
         }
         
         return current_image, compression_info
-    
-    def _estimate_optimal_quality(self, width: int, height: int, target_size_bytes: int, 
-                                format_used: str, initial_quality: int) -> int:
-        """智能估算最佳质量值，减少循环次数"""
-        # 根据图片尺寸和目标大小快速估算合适的质量值
-        pixels = width * height
-        target_bpp = target_size_bytes * 8 / pixels  # 目标每像素位数
-        
-        if format_used == "JPEG":
-            # JPEG质量估算：根据目标每像素位数调整
-            if target_bpp < 0.5:
-                return max(60, initial_quality - 30)
-            elif target_bpp < 1.0:
-                return max(65, initial_quality - 20)
-            elif target_bpp < 2.0:
-                return max(70, initial_quality - 15)
-            else:
-                return max(75, initial_quality - 10)
-        elif format_used == "WEBP":
-            # WEBP质量估算
-            if target_bpp < 0.5:
-                return max(60, initial_quality - 25)
-            elif target_bpp < 1.0:
-                return max(65, initial_quality - 15)
-            else:
-                return max(70, initial_quality - 10)
-        else:
-            # PNG等无损格式，主要依赖尺寸调整
-            return initial_quality
-    
-    def _estimate_size_after_quality(self, width: int, height: int, quality: int, 
-                                   format_used: str) -> int:
-        """估算调整质量后的大概文件大小"""
-        pixels = width * height
-        
-        if format_used == "JPEG":
-            # JPEG大小估算：质量越高，每像素位数越多
-            if quality >= 90:
-                bpp = 2.5
-            elif quality >= 80:
-                bpp = 2.0
-            elif quality >= 70:
-                bpp = 1.5
-            elif quality >= 60:
-                bpp = 1.0
-            else:
-                bpp = 0.8
-        elif format_used == "WEBP":
-            # WEBP大小估算
-            if quality >= 90:
-                bpp = 2.0
-            elif quality >= 80:
-                bpp = 1.6
-            elif quality >= 70:
-                bpp = 1.2
-            elif quality >= 60:
-                bpp = 0.9
-            else:
-                bpp = 0.7
-        else:
-            # PNG等格式，估算为较大值
-            bpp = 3.0
-        
-        return int(pixels * bpp / 8)  # 转换为字节

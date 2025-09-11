@@ -3,27 +3,27 @@ identity:
   author: "liangmj"
   label:
     zh_Hans: "图片压缩器"
-    en_US: "Image Press"
+    en_US: "Image Compressor"
     pt_BR: "Compressor de Imagem"
 description:
   human:
-    en_US: "A powerful image compression tool that can compress images to specified sizes while maintaining quality"
-    zh_Hans: "一个强大的图片压缩工具，可以将图片压缩到指定大小并保持质量"
-    pt_BR: "Uma ferramenta poderosa de compressão de imagem que pode comprimir imagens para tamanhos especificados mantendo a qualidade"
-  llm: "A tool for compressing images to specified sizes while maintaining optimal quality. Supports multiple formats including JPEG, PNG, and WebP."
+    en_US: "A simple image compression tool that automatically compresses images to under 1MB"
+    zh_Hans: "简单的图片压缩工具，自动将图片压缩到1MB以下"
+    pt_BR: "Uma ferramenta simples de compressão de imagem que comprime automaticamente imagens para menos de 1MB"
+  llm: "A tool for automatically compressing images to under 1MB while maintaining good quality. Just upload an image or provide a URL."
 parameters:
   - name: "image_input"
     type: "file"
     required: false
     label:
-      en_US: "Image Input"
-      zh_Hans: "图片输入"
-      pt_BR: "Entrada de Imagem"
+      en_US: "Upload Image"
+      zh_Hans: "上传图片"
+      pt_BR: "Fazer Upload da Imagem"
     human_description:
-      en_US: "Upload an image file to be compressed"
-      zh_Hans: "上传图片文件进行压缩"
-      pt_BR: "Faça upload de um arquivo de imagem para ser comprimida"
-    llm_description: "Upload an image file to be compressed"
+      en_US: "Upload an image file to be automatically compressed to under 1MB"
+      zh_Hans: "上传图片文件自动压缩到1MB以下"
+      pt_BR: "Faça upload de um arquivo de imagem para ser automaticamente comprimido para menos de 1MB"
+    llm_description: "Upload an image file to be automatically compressed to under 1MB"
     form: "llm"
     file_types: ["image"]
   
@@ -31,85 +31,15 @@ parameters:
     type: "string"
     required: false
     label:
-      en_US: "Image URL (Optional)"
-      zh_Hans: "图片链接（可选）"
-      pt_BR: "URL da Imagem (Opcional)"
+      en_US: "Image URL"
+      zh_Hans: "图片链接"
+      pt_BR: "URL da Imagem"
     human_description:
-      en_US: "Alternative: Enter an image URL to be compressed (if not uploading a file)"
-      zh_Hans: "替代方案：输入图片链接进行压缩（如果不选择上传文件）"
-      pt_BR: "Alternativa: Insira uma URL de imagem para ser comprimida (se não fizer upload de arquivo)"
-    llm_description: "Alternative: Enter an image URL to be compressed if not uploading a file"
+      en_US: "Or enter an image URL to be automatically compressed to under 1MB"
+      zh_Hans: "或输入图片链接自动压缩到1MB以下"
+      pt_BR: "Ou insira uma URL de imagem para ser automaticamente comprimida para menos de 1MB"
+    llm_description: "Enter an image URL to be automatically compressed to under 1MB"
     form: "llm"
-  
-  - name: "target_size_kb"
-    type: "number"
-    required: false
-    default: 200
-    min: 50
-    max: 8192
-    label:
-      en_US: "Target Size (KB)"
-      zh_Hans: "目标大小 (KB)"
-      pt_BR: "Tamanho Alvo (KB)"
-    human_description:
-      en_US: "Target file size in kilobytes. The compressed image will be approximately this size (50-8192 KB)"
-      zh_Hans: "目标文件大小，单位KB。压缩后的图片大小将接近此数值 (50-8192 KB)"
-      pt_BR: "Tamanho do arquivo alvo em quilobytes. A imagem comprimida terá aproximadamente este tamanho (50-8192 KB)"
-    llm_description: "Target file size in kilobytes. The compressed image will be approximately this size, range: 50-8192 KB"
-    form: "llm"
-  
-  - name: "quality"
-    type: "number"
-    required: false
-    default: 85
-    min: 60
-    max: 95
-    label:
-      en_US: "Quality"
-      zh_Hans: "质量"
-      pt_BR: "Qualidade"
-    human_description:
-      en_US: "Initial compression quality (60-95)"
-      zh_Hans: "初始压缩质量 (60-95)"
-      pt_BR: "Qualidade inicial de compressão (60-95)"
-    llm_description: "Initial compression quality, range: 60-95"
-    form: "llm"
-  
-  - name: "format"
-    type: "select"
-    required: false
-    default: "auto"
-    label:
-      en_US: "Output Format"
-      zh_Hans: "输出格式"
-      pt_BR: "Formato de Saída"
-    human_description:
-      en_US: "Output image format: auto, jpeg, png, webp"
-      zh_Hans: "输出图片格式：auto（自动）、jpeg、png、webp"
-      pt_BR: "Formato de imagem de saída: auto, jpeg, png, webp"
-    llm_description: "Output image format. Options: auto (automatic), jpeg, png, webp"
-    form: "llm"
-    options:
-      - value: "auto"
-        label:
-          en_US: "Auto (Automatic)"
-          zh_Hans: "自动"
-          pt_BR: "Automático"
-      - value: "jpeg"
-        label:
-          en_US: "JPEG"
-          zh_Hans: "JPEG"
-          pt_BR: "JPEG"
-      - value: "png"
-        label:
-          en_US: "PNG"
-          zh_Hans: "PNG"
-          pt_BR: "PNG"
-      - value: "webp"
-        label:
-          en_US: "WebP"
-          zh_Hans: "WebP"
-          pt_BR: "WebP"
 
 extra:
   python:
